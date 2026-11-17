@@ -15,6 +15,7 @@
   /* Lissage indépendant du nombre d'images par seconde. */
   var damp = function (a, b, k, dt) { return a + (b - a) * (1 - Math.exp(-k * dt)); };
   var easeOutExpo = function (t) { return t >= 1 ? 1 : 1 - Math.pow(2, -10 * t); };
+  var smoother = function (t) { return t * t * t * (t * (t * 6 - 15) + 10); };
 
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var finePointer = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
@@ -200,7 +201,9 @@
       var t = $(location.hash); if (t) scrollToY(targetY(t), true);
     }
     setTimeout(function () { root.classList.add('ready'); }, 650);
-    setTimeout(function () { root.classList.add('intro-done'); measureLetters(); }, 2600);
+    setTimeout(function () { root.classList.add('intro-done'); }, 2600);
+    // Si la scène 3D ne s'est pas lancée (ouverture en file://, WebGL absent…), on bascule sur le fond de secours.
+    setTimeout(function () { if (!window.__scene3d) root.classList.add('no-3d'); }, 7000);
     setTimeout(function () { if (loader) loader.classList.add('is-gone'); }, 1600);
     setTimeout(function () { if (window.Projects) window.Projects.openFromHash(); }, 900);
   }
@@ -237,22 +240,22 @@
      ------------------------------------------------------------------ */
   function enableLite() {
     if (lite) return; lite = true;
-    root.classList.add('lite');
+    root.classList.add('lite', 'no-3d');
     root.classList.remove('has-smooth'); smooth.off = true; // défilement natif, plus fiable sur un appareil lent
-    if (hero) hero.classList.add('no-gl');
   }
   if (!fxForce && !reduce) {
     if (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 2) enableLite();
     else {
+      // On ne mesure qu'une fois l'intro et la compilation des shaders terminées, pour ne pas confondre un pic de chargement avec un appareil lent.
       var pf = { start: 0, frames: 0 };
       add(function (dt, now) {
         if (lite) return false;
-        if (!root.classList.contains('loaded')) return;
-        if (!pf.start) pf.start = now + 700;      // on laisse passer l'intro
+        if (!root.classList.contains('intro-done')) return;
+        if (!pf.start) pf.start = now + 900;
         if (now < pf.start) return;
         pf.frames++;
         var el = now - pf.start;
-        if (el > 2600) { if (pf.frames / (el / 1000) < 28) enableLite(); return false; }
+        if (el > 2800) { if (pf.frames / (el / 1000) < 24) enableLite(); return false; }
       });
     }
   }
@@ -285,7 +288,7 @@
 
   function initTilt(el) {
     if (!finePointer || reduce || !once(el, 'tilt')) return;
-    var trx = 0, try_ = 0, crx = 0, cry = 0, running = false, max = 5;
+    var trx = 0, try_ = 0, crx = 0, cry = 0, running = false, max = parseFloat(el.getAttribute('data-tilt')) || 5;
     function step(dt) {
       crx = damp(crx, trx, 9, dt); cry = damp(cry, try_, 9, dt);
       el.style.setProperty('--rx', crx.toFixed(3) + 'deg'); el.style.setProperty('--ry', cry.toFixed(3) + 'deg');
@@ -312,6 +315,7 @@
   }
 
   var parEls = [], panelEls = [];
+  var c3d = null, c3dRing = null, c3dCards = [], c3dN = 0, c3dIdx = 0, c3dNum = null, c3dDots = [], c3dLast = -1;
   function register(scope) {
     scope = scope || document;
     $$('[data-magnetic]', scope).forEach(initMagnetic);
@@ -323,6 +327,10 @@
     });
     parEls = $$('[data-par]');
     panelEls = $$('.panel');
+    if (!c3d) {
+      c3d = $('#c3d');
+      if (c3d) { c3dRing = $('#c3dRing'); c3dCards = $$('.c3d-card', c3d); c3dN = c3dCards.length; c3dNum = $('#c3dNum'); c3dDots = $$('.c3d-dot', c3d); }
+    }
   }
 
   /* Compteurs */
@@ -388,7 +396,7 @@
   var navPill = $('#navPill'), navInd = $('#navInd');
   var navLinks = $$('[data-link]', navPill);
   var navSections = navLinks.map(function (a) { return $(a.getAttribute('href')); });
-  var activeLink = null, footerH = 0;
+  var activeLink = null;
 
   function moveIndicator(link) {
     if (!link) { navInd.style.opacity = '0'; return; }
@@ -428,21 +436,28 @@
       }
     }
 
-    /* Panneaux de projets : chaque panneau recule quand le suivant l'écrase. */
-    var panels = panelEls;
-    if (panels.length) {
-      var stacked = vw > 860 && !reduce;
-      for (var k = 0; k < panels.length; k++) {
-        var s = 1, d = 0, nxt = panels[k + 1];
-        if (stacked && nxt) {
-          var nt = nxt.getBoundingClientRect().top, stickyNext = nxt._sticky || 100;
-          var pp = clamp((vh * 0.95 - nt) / (vh * 0.95 - stickyNext), 0, 1);
-          s = 1 - 0.06 * pp; d = pp;
+    /* Carrousel 3D des projets : le scroll fait tourner le cylindre (avec un temps d'arrêt sur chaque projet). */
+    if (c3d && c3dN > 1) {
+      if (vw > 860 && !reduce) {
+        var cr = c3d.getBoundingClientRect(), span = Math.max(1, cr.height - vh);
+        var f3 = clamp(-cr.top / span, 0, 1) * (c3dN - 1), i3 = Math.min(Math.floor(f3), c3dN - 2);
+        var tgt = i3 + smoother(clamp((f3 - i3 - 0.18) / 0.64, 0, 1));
+        c3dIdx = damp(c3dIdx, tgt, 6.5, dt);
+        setVar(c3dRing, '--rot', (-c3dIdx * (360 / c3dN)).toFixed(3) + 'deg');
+        for (var q = 0; q < c3dN; q++) {
+          var dq = Math.abs(q - c3dIdx);
+          setVar(c3dCards[q], '--dim', clamp((dq - 0.12) * 0.5, 0, 0.86).toFixed(3));
+          var front = dq < 0.5;
+          if (c3dCards[q]._front !== front) { c3dCards[q]._front = front; c3dCards[q].classList.toggle('is-front', front); }
         }
-        setVar(panels[k], '--s', s.toFixed(4)); setVar(panels[k], '--dim', d.toFixed(3));
+        var cur3 = Math.round(c3dIdx);
+        if (cur3 !== c3dLast) {
+          c3dLast = cur3;
+          if (c3dNum) c3dNum.textContent = String(cur3 + 1).padStart(2, '0');
+          c3dDots.forEach(function (d, k) { d.classList.toggle('is-on', k === cur3); });
+        }
       }
     }
-
     /* Parallaxe des captures (vitrine et étude de cas) */
     for (var j = 0; j < parEls.length; j++) {
       var img = parEls[j], rr = img.parentElement.getBoundingClientRect();
@@ -451,8 +466,8 @@
       setVar(img, '--py', (-pr * 10.2).toFixed(2) + '%');
     }
 
-    /* Pied de page révélé sous le contenu */
-    if (footer && footerH) setVar(footer, '--fill', clamp((y - (max - footerH)) / footerH, 0, 1).toFixed(3));
+    /* Pied de page : le grand nom se remplit à mesure qu'il entre dans l'écran */
+    if (footer) { var fr = footer.getBoundingClientRect(); if (fr.top < vh) setVar(footer, '--fill', clamp((vh - fr.top) / (fr.height * 0.9), 0, 1).toFixed(3)); }
 
     /* Lien actif */
     var mid = y + vh * 0.45, found = null;
@@ -525,212 +540,30 @@
   })();
 
   /* ------------------------------------------------------------------
-     Hero : lettres qui réagissent au curseur
-     ------------------------------------------------------------------ */
-  var titleFont = 160;
-  function measureLetters() {
-    if (!letters.length) return;
-    var y = window.pageYOffset, title = $('.hero-title');
-    titleFont = parseFloat(getComputedStyle(title).fontSize) || 160;
-    letters.forEach(function (L) {
-      var keep = L.el.style.transform; L.el.style.transform = 'none';
-      var r = L.el.getBoundingClientRect();
-      L.cx = r.left + r.width / 2; L.cy = r.top + r.height / 2 + y * 0.82;
-      L.el.style.transform = keep;
-    });
-  }
-  if (letters.length && finePointer && !reduce) {
-    add(function (dt) {
-      if (!root.classList.contains('intro-done')) return;
-      var y = window.pageYOffset, R = Math.max(170, vw * 0.13);
-      var live = pointer.active && y < vh * 0.9;
-      for (var i = 0; i < letters.length; i++) {
-        var L = letters[i], f = 0, dx = 0;
-        if (live) {
-          dx = pointer.x - L.cx; var dy = pointer.y - (L.cy - y * 0.82), d = Math.sqrt(dx * dx + dy * dy);
-          f = clamp(1 - d / R, 0, 1); f = f * f * (3 - 2 * f);
-        }
-        var ty = -f * titleFont * 0.075, tx = -(dx / R) * f * titleFont * 0.045, tr = (dx / R) * f * 5, ts = 1 + f * 0.04;
-        L.x = damp(L.x, tx, 9, dt); L.y = damp(L.y, ty, 9, dt); L.r = damp(L.r, tr, 9, dt); L.s = damp(L.s, ts, 9, dt);
-        if (!f && Math.abs(L.x) + Math.abs(L.y) + Math.abs(L.r) < 0.03 && Math.abs(L.s - 1) < 0.0006) {
-          if (L.dirty) { L.el.style.transform = ''; L.dirty = false; }
-          continue;
-        }
-        L.dirty = true;
-        L.el.style.transform = 'translate3d(' + L.x.toFixed(2) + 'px,' + L.y.toFixed(2) + 'px,0) rotate(' + L.r.toFixed(2) + 'deg) scale(' + L.s.toFixed(3) + ')';
-      }
-    });
-  }
-
-  /* ------------------------------------------------------------------
-     Hero : fond WebGL (shader de soie lumineuse) + particules
-     ------------------------------------------------------------------ */
-  var FRAG = [
-    '#ifdef GL_FRAGMENT_PRECISION_HIGH', 'precision highp float;', '#else', 'precision mediump float;', '#endif',
-    'uniform vec2 uRes; uniform float uTime; uniform vec2 uMouse; uniform float uLight; uniform float uIntro;',
-    'float hash(vec2 p){ p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32); return fract(p.x*p.y); }',
-    'float noise(vec2 p){ vec2 i=floor(p); vec2 f=fract(p); f=f*f*(3.0-2.0*f);',
-    '  float a=hash(i); float b=hash(i+vec2(1.0,0.0)); float c=hash(i+vec2(0.0,1.0)); float d=hash(i+vec2(1.0,1.0));',
-    '  return mix(mix(a,b,f.x),mix(c,d,f.x),f.y); }',
-    'float fbm(vec2 p){ float v=0.0; float a=0.5; for(int i=0;i<5;i++){ v+=a*noise(p); p=p*2.03+vec2(1.7,9.2); a*=0.5; } return v; }',
-    'void main(){',
-    '  vec2 p=(gl_FragCoord.xy-0.5*uRes)/uRes.y;',
-    '  vec2 m=(uMouse-0.5*uRes)/uRes.y;',
-    '  float t=uTime*0.05;',
-    '  vec2 q=vec2(fbm(p*1.3+vec2(0.0,t)),fbm(p*1.3+vec2(5.2,1.3)-t));',
-    '  vec2 d=p-m; float dist=length(d); float inf=exp(-dist*dist*6.0);',
-    '  vec2 r=vec2(fbm(p*1.7+3.0*q+vec2(1.7,9.2)+t*1.3),fbm(p*1.7+3.0*q+vec2(8.3,2.8)-t));',
-    '  r+=vec2(-d.y,d.x)*inf*0.9;',
-    '  float f=fbm(p*1.5+3.2*r);',
-    '  float mask=0.30+0.70*smoothstep(-0.55,0.75,p.x*0.85+p.y*0.45);',
-    '  vec3 dark=vec3(0.039,0.035,0.031);',
-    '  vec3 c3=vec3(0.62,0.12,0.05); vec3 c1=vec3(1.0,0.42,0.21); vec3 c2=vec3(1.0,0.71,0.28);',
-    '  vec3 col=dark;',
-    '  col+=c3*smoothstep(0.28,0.78,f)*0.55;',
-    '  col+=c1*smoothstep(0.52,0.92,f)*0.42*(0.55+0.9*q.x);',
-    '  col+=c2*pow(smoothstep(0.58,0.95,f),3.0)*0.55;',
-    '  float ln=1.0-smoothstep(0.0,0.03,abs(f-0.56));',
-    '  col+=c2*ln*0.22*(0.5+q.y);',
-    '  col=mix(dark,col,mask);',
-    '  col+=c1*inf*0.22;',
-    '  vec3 lbase=vec3(0.980,0.965,0.945);',
-    '  vec3 lc=lbase;',
-    '  lc=mix(lc,vec3(1.0,0.80,0.58),smoothstep(0.30,0.80,f)*0.65);',
-    '  lc=mix(lc,vec3(0.97,0.52,0.24),smoothstep(0.55,0.95,f)*0.55);',
-    '  lc=mix(lc,vec3(0.90,0.36,0.15),ln*0.30);',
-    '  lc=mix(lbase,lc,mask);',
-    '  lc-=vec3(0.0,0.05,0.12)*inf*0.5;',
-    '  vec3 outc=mix(col,lc,uLight);',
-    '  vec3 bg=mix(dark,lbase,uLight);',
-    '  outc=mix(bg,outc,uIntro);',
-    '  outc+=(hash(gl_FragCoord.xy+uTime)-0.5)*0.012;',
-    '  gl_FragColor=vec4(outc,1.0);',
-    '}'
-  ].join('\n');
-
-  function initGL() {
-    var cv = $('#gl'); if (!cv) return false;
-    var gl = null;
-    try { gl = cv.getContext('webgl', { antialias: false, alpha: false, depth: false, stencil: false, powerPreference: 'low-power' }); } catch (e) {}
-    if (!gl) return false;
-    function compile(type, src) {
-      var s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
-      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) { if (window.console) console.warn(gl.getShaderInfoLog(s)); return null; }
-      return s;
-    }
-    var vs = compile(gl.VERTEX_SHADER, 'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}');
-    var fs = compile(gl.FRAGMENT_SHADER, FRAG);
-    if (!vs || !fs) return false;
-    var prog = gl.createProgram(); gl.attachShader(prog, vs); gl.attachShader(prog, fs); gl.linkProgram(prog);
-    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return false;
-    gl.useProgram(prog);
-    var buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
-    var loc = gl.getAttribLocation(prog, 'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-    var U = { res: gl.getUniformLocation(prog, 'uRes'), time: gl.getUniformLocation(prog, 'uTime'), mouse: gl.getUniformLocation(prog, 'uMouse'), light: gl.getUniformLocation(prog, 'uLight'), intro: gl.getUniformLocation(prog, 'uIntro') };
-
-    var W = 1, H = 1, time = 8, mx = -9999, my = -9999, light = root.getAttribute('data-theme') === 'light' ? 1 : 0, intro = reduce ? 1 : 0, visible = true, lost = false;
-    var LEVELS = [0.5, 0.36, 0.26], level = 0;
-    function resize() {
-      var q = LEVELS[level] * Math.min(window.devicePixelRatio || 1, 1.5);
-      var cw = cv.clientWidth || 1, ch = cv.clientHeight || 1;
-      W = Math.max(2, Math.round(cw * q)); H = Math.max(2, Math.round(ch * q));
-      cv.width = W; cv.height = H; gl.viewport(0, 0, W, H);
-    }
-    function draw() {
-      gl.uniform2f(U.res, W, H); gl.uniform1f(U.time, time); gl.uniform2f(U.mouse, mx, my);
-      gl.uniform1f(U.light, light); gl.uniform1f(U.intro, intro);
-      gl.drawArrays(gl.TRIANGLES, 0, 3);
-    }
-    /* Qualité adaptative : on mesure le coût réel d'une image. Un rendu logiciel (sans GPU)
-       est trop lent pour ce shader : dans ce cas on bascule sur le fond CSS. ?gl=force pour tester. */
-    var forced = /[?&]gl=force/.test(location.search);
-    resize(); draw(); gl.finish();
-    var tb = performance.now(); draw(); gl.finish(); var cost = performance.now() - tb;
-    if (!forced && cost > 140) { try { var ext = gl.getExtension('WEBGL_lose_context'); if (ext) ext.loseContext(); } catch (e) {} return false; }
-    if (!forced && cost > 40) { level = 1; resize(); }
-    function disable() { lost = true; hero.classList.add('no-gl'); }
-    cv.addEventListener('webglcontextlost', function (e) { e.preventDefault(); disable(); });
-    window.addEventListener('resize', function () { resize(); if (reduce) draw(); });
-    if ('IntersectionObserver' in window) new IntersectionObserver(function (e) { visible = e[0].isIntersecting; }).observe(hero);
-
-    if (reduce) { root.addEventListener('gl-theme', function () { light = root.getAttribute('data-theme') === 'light' ? 1 : 0; draw(); }); return true; }
-
-    var introT0 = 0, lastNow = 0, slow = 0, since = 0;
-    add(function (dt, now) {
-      if (lost || lite) return false;
-      if (!visible || document.hidden || !root.classList.contains('loaded')) { lastNow = 0; return; }
-      // Surveillance de la fluidité : si ça rame, on baisse la résolution, puis on coupe.
-      if (lastNow && !forced) {
-        var ft = now - lastNow; since += ft;
-        if (since > 700) { if (ft > 48) slow++; else slow = Math.max(0, slow - 1); }
-        if (slow > 14) { slow = 0; level++; if (level >= LEVELS.length) { disable(); return false; } resize(); }
-      }
-      lastNow = now;
-      time += dt;
-      // Apparition basée sur l'horloge (et non sur le nombre d'images) : identique sur GPU lent ou rapide.
-      if (root.classList.contains('ready')) { if (!introT0) introT0 = now; intro = easeOutExpo(clamp((now - introT0) / 2200, 0, 1)); }
-      var lt = root.getAttribute('data-theme') === 'light' ? 1 : 0; light = damp(light, lt, 6, dt);
-      var r = cv.getBoundingClientRect();
-      var tx = pointer.active ? (pointer.x - r.left) * (W / r.width) : -9999, ty = pointer.active ? (r.height - (pointer.y - r.top)) * (H / r.height) : -9999;
-      if (mx < -9000 || tx < -9000) { mx = tx; my = ty; } else { mx = damp(mx, tx, 5, dt); my = damp(my, ty, 5, dt); }
-      draw();
-    });
-    return true;
-  }
-
-  function initFlow() {
-    var cv = $('#flow'); if (!cv || !hero || reduce) return;
-    var ctx = cv.getContext('2d'), W = 0, H = 0, particles = [], visible = true, time = 0, B = 3;
-    function spawn(p) { p.x = Math.random() * W; p.y = Math.random() * H; p.px = p.x; p.py = p.y; p.life = 120 + Math.random() * 260; p.speed = 0.6 + Math.random() * 1.0; p.b = Math.floor(Math.random() * B); return p; }
-    function resize() {
-      var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-      W = cv.clientWidth; H = cv.clientHeight; cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      var n = clamp(Math.floor((W * H) / 3800), 120, 520); particles = []; for (var i = 0; i < n; i++) particles.push(spawn({}));
-    }
-    var field = function (x, y, t) { var s = 0.0021; return (Math.sin(x * s * 1.1 + t * 0.35) + Math.cos(y * s * 1.4 - t * 0.28) + Math.sin((x + y) * s * 0.7 + t * 0.2) * 0.8) * 1.6; };
-    resize();
-    var rto; window.addEventListener('resize', function () { clearTimeout(rto); rto = setTimeout(resize, 200); });
-    if ('IntersectionObserver' in window) new IntersectionObserver(function (e) { visible = e[0].isIntersecting; }).observe(hero);
-    add(function (dt) {
-      if (lite) { ctx.clearRect(0, 0, W, H); return false; }
-      if (!visible || document.hidden) return;
-      time += dt * 0.7;
-      var light = root.getAttribute('data-theme') === 'light';
-      ctx.globalCompositeOperation = 'destination-out'; ctx.fillStyle = 'rgba(0,0,0,0.09)'; ctx.fillRect(0, 0, W, H);
-      ctx.globalCompositeOperation = light ? 'source-over' : 'lighter';
-      var rect = cv.getBoundingClientRect(), mx = pointer.x - rect.left, my = pointer.y - rect.top;
-      var cols = light ? ['rgba(214,68,22,.42)', 'rgba(236,128,28,.38)', 'rgba(170,40,14,.34)'] : ['rgba(255,107,53,.45)', 'rgba(255,181,71,.4)', 'rgba(255,214,150,.3)'];
-      var paths = []; for (var b = 0; b < B; b++) paths.push(new Path2D());
-      for (var i = 0; i < particles.length; i++) {
-        var p = particles[i], a = field(p.x, p.y, time), vx = Math.cos(a) * p.speed, vy = Math.sin(a) * p.speed;
-        if (pointer.active) {
-          var dx = p.x - mx, dy = p.y - my, d2 = dx * dx + dy * dy;
-          if (d2 < 22500) { var d = Math.sqrt(d2) || 1, f = 1 - d / 150; vx += (dx / d) * f * 3.2 + (-dy / d) * f * 2.2; vy += (dy / d) * f * 3.2 + (dx / d) * f * 2.2; }
-        }
-        p.px = p.x; p.py = p.y; p.x += vx; p.y += vy; p.life--;
-        paths[p.b].moveTo(p.px, p.py); paths[p.b].lineTo(p.x, p.y);
-        if (p.life <= 0 || p.x < -20 || p.x > W + 20 || p.y < -20 || p.y > H + 20) spawn(p);
-      }
-      ctx.lineWidth = 1.1; ctx.lineCap = 'round';
-      for (var k = 0; k < B; k++) { ctx.strokeStyle = cols[k]; ctx.stroke(paths[k]); }
-    });
-  }
-
-  if (hero && !lite) {
-    if (!initGL()) hero.classList.add('no-gl');
-    initFlow();
-  }
-
-  /* ------------------------------------------------------------------
      Mesures et redimensionnement
      ------------------------------------------------------------------ */
   function measureAll() {
     vw = window.innerWidth; vh = window.innerHeight;
-    if (footer) { footerH = footer.offsetHeight; root.style.setProperty('--footer-h', footerH + 'px'); }
-    panelEls.forEach(function (p) { p._sticky = parseFloat(getComputedStyle(p).top) || 100; });
-    moveIndicator(activeLink); measureLetters();
+    if (c3d && c3dN > 1) {
+      // Rayon du cylindre : les cartes se touchent presque par leurs bords, avec un peu d'air (x1.16).
+      var cw = c3dCards[0].offsetWidth || 900, R = (cw / 2) / Math.tan(Math.PI / c3dN) * 1.16;
+      c3d.style.setProperty('--R', R.toFixed(0) + 'px'); c3d.style.setProperty('--step', (360 / c3dN) + 'deg');
+    }
+    moveIndicator(activeLink);
   }
+
+  /* Carrousel : navigation par points et clic sur une carte latérale pour l'amener devant */
+  function go3d(i) {
+    if (!c3d) return;
+    var top = c3d.getBoundingClientRect().top + window.pageYOffset, span = Math.max(1, c3d.offsetHeight - vh);
+    scrollToY(top + (i / Math.max(1, c3dN - 1)) * span + 2);
+  }
+  document.addEventListener('click', function (e) {
+    var dot = e.target.closest && e.target.closest('.c3d-dot');
+    if (dot) { e.preventDefault(); go3d(+dot.getAttribute('data-goto')); return; }
+    var card = e.target.closest && e.target.closest('.c3d-card');
+    if (card && e.isTrusted && c3d && vw > 860 && !reduce && !card.classList.contains('is-front')) { e.preventDefault(); e.stopPropagation(); go3d(+card.getAttribute('data-idx')); }
+  }, true);
   var rto2; window.addEventListener('resize', function () { clearTimeout(rto2); rto2 = setTimeout(measureAll, 120); });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(measureAll);
   window.addEventListener('load', measureAll);

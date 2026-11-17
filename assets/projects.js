@@ -224,7 +224,7 @@
   function panelHTML(p, i) {
     var tags = p.stack.slice(0, 5).map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('');
     var ext = p.links.filter(function (l) { return l.ic === 'github'; })[0];
-    return '<article class="panel" style="--i:' + i + ';' + colorVars(p) + '" aria-labelledby="pt-' + p.id + '">'
+    return '<article class="c3d-card" data-idx="' + i + '" style="--i:' + i + ';' + colorVars(p) + '" aria-labelledby="pt-' + p.id + '">'
       + '<div class="panel-card" data-spot>'
       + '<span class="panel-no" aria-hidden="true">' + p.no + '</span>'
       + '<div class="panel-copy">'
@@ -251,7 +251,17 @@
 
   var stackEl = document.getElementById('stack');
   var indexEl = document.getElementById('index');
-  if (stackEl) stackEl.innerHTML = PROJECTS.filter(function (p) { return p.featured; }).map(panelHTML).join('');
+  /* Carrousel 3D : les projets vedettes sont posés sur un cylindre qui tourne avec le scroll (voir main.js et style.css, .c3d). */
+  var featured = PROJECTS.filter(function (p) { return p.featured; });
+  if (stackEl) {
+    var dots = featured.map(function (p, i) {
+      return '<button type="button" class="c3d-dot" data-goto="' + i + '" aria-label="Aller au projet ' + esc(p.title) + '"><i></i></button>';
+    }).join('');
+    stackEl.innerHTML = '<div class="c3d" id="c3d" style="--n:' + featured.length + '">'
+      + '<div class="c3d-pin"><div class="c3d-stage"><div class="c3d-ring" id="c3dRing">' + featured.map(panelHTML).join('') + '</div></div>'
+      + '<div class="c3d-hud"><span class="c3d-count"><b id="c3dNum">01</b> / ' + String(featured.length).padStart(2, '0') + '</span>'
+      + '<div class="c3d-dots">' + dots + '</div><span class="c3d-hint">Faites défiler : le cylindre tourne</span></div></div></div>';
+  }
   if (indexEl) indexEl.innerHTML = PROJECTS.map(rowHTML).join('');
 
   /* ---------------------------------------------------------------------

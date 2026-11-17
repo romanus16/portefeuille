@@ -55,6 +55,8 @@
     <div class="loader-bar"><i id="loaderBar"></i></div>
   </div>
 
+  <!-- Scène 3D décorative (Three.js) : fixe, derrière tout le contenu -->
+  <canvas id="stage3d" aria-hidden="true"></canvas>
   <div class="progress" id="progress"></div>
   <div class="grain" aria-hidden="true"></div>
 
@@ -104,9 +106,7 @@
   <main id="main">
     <!-- ============ ACCUEIL ============ -->
     <section class="hero" id="top">
-      <canvas id="gl" aria-hidden="true"></canvas>
       <div class="aurora" aria-hidden="true"><span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span></div>
-      <canvas id="flow" aria-hidden="true"></canvas>
 
       <div class="container hero-inner" id="heroInner">
         <span class="badge" data-hero style="--h:0"><i class="dot"></i>Ouvert aux opportunités</span>
@@ -161,6 +161,7 @@
 
         <div class="about-grid">
           <div class="portrait-wrap" data-reveal="scale">
+          <div class="tilt3d" data-tilt="9">
             <div class="portrait-frame"></div>
             <div class="portrait" id="portrait">
               <img src="WhatsApp%20Image%202025-10-24%20%C3%A0%2000.16.47_a04f0cc1.jpg" alt="Portrait d'AHONYI Romaric" width="1001" height="989" decoding="async" id="portraitImg">
@@ -170,6 +171,7 @@
               <svg viewBox="0 0 200 200"><defs><path id="orbitPath" d="M100,100 m-78,0 a78,78 0 1,1 156,0 a78,78 0 1,1 -156,0"/></defs><text><textPath href="#orbitPath" textLength="480" lengthAdjust="spacing">DÉVELOPPEUR • DESIGNER • SPÉCIALISTE IA • </textPath></text></svg>
               <span class="orbit-core"><svg class="ic"><use href="#i-code"/></svg></span>
             </div>
+          </div>
           </div>
 
           <div class="about-text">
@@ -197,6 +199,7 @@
           <p data-reveal>Une palette large, du code au design, pour aller de l'idée au produit fini.</p>
         </div>
 
+        <div class="skills-wrap">
         <div class="bento">
           <article class="card b-7" data-spot data-reveal>
             <div class="card-num"><span>01</span><span>Langages</span></div>
@@ -238,6 +241,8 @@
             </div>
           </article>
         </div>
+        <div class="skills-orb" id="skillsOrb" aria-hidden="true"><span>Sphère interactive · survolez un mot</span></div>
+        </div>
       </div>
     </section>
 
@@ -249,7 +254,7 @@
             <div class="sec-label" data-reveal><b>03</b> Projets</div>
             <h2 class="sec-title" data-split>Mes <em class="serif grad">réalisations</em></h2>
           </div>
-          <p data-reveal>Cinq projets en détail, avec captures réelles et pages dédiées. Cliquez sur un projet pour ouvrir son étude de cas.</p>
+          <p data-reveal>Faites défiler : cinq projets en détail tournent autour du noyau, avec captures réelles. Cliquez sur une carte pour ouvrir son étude de cas.</p>
         </div>
 
         <div class="stack" id="stack">
@@ -303,5 +308,7 @@
 
   <script src="assets/projects.js"></script>
   <script src="assets/main.js"></script>
+  <!-- Module ES : nécessite d'être servi en http(s) (GitHub Pages, Live Server…). Sinon, repli automatique sans 3D. -->
+  <script type="module" src="assets/scene3d.js"></script>
 </body>
 </html>
