@@ -112,8 +112,15 @@
         var inn = document.createElement('span'); inn.className = 'ch-in'; inn.textContent = c;
         inn.style.setProperty('--ci', idx++);
         if (grad) inn.style.setProperty('--k', (i / Math.max(1, arr.length - 1)).toFixed(3));
+        // Extrusion 3D : des copies de la lettre empilées vers l'arrière lui donnent une vraie épaisseur.
+        var depth = reduce ? 0 : (finePointer ? 10 : 6);
+        for (var l = 1; l <= depth; l++) {
+          var d = document.createElement('span'); d.className = 'ch-d'; d.textContent = c;
+          d.style.setProperty('--l', l); d.style.setProperty('--ln', depth);
+          inn.appendChild(d);
+        }
         ch.appendChild(inn); el.appendChild(ch);
-        letters.push({ el: ch, x: 0, y: 0, r: 0, s: 1, cx: 0, cy: 0, dirty: false });
+        letters.push({ el: ch, z: 0, ry: 0, cx: 0, cy: 0, w: 0, dirty: false });
       });
     });
   })();
@@ -191,6 +198,59 @@
       window.Warp.go(function () { scrollToY(ty, true); }, { x: e.clientX, y: e.clientY, label: label });
     } else scrollToY(ty);
   });
+
+  /* ------------------------------------------------------------------
+     Nom en 3D : le titre s'incline avec la souris (ou oscille seul sur
+     tactile), les lettres survolées avancent vers l'écran, et le titre
+     bascule en profondeur quand on défile.
+     ------------------------------------------------------------------ */
+  (function () {
+    var title = $('.hero-title');
+    if (!title || !letters.length || reduce) return;
+    var rx = 0, ry = 0, tz = 0;
+    function measure() {
+      letters.forEach(function (L) {
+        var op = L.el.offsetParent; if (!op) return;
+        var r = op.getBoundingClientRect();
+        L.w = L.el.offsetWidth;
+        L.cx = r.left + window.pageXOffset + L.el.offsetLeft + L.w / 2;
+        L.cy = r.top + window.pageYOffset + L.el.offsetTop + L.el.offsetHeight / 2;
+      });
+    }
+    measure();
+    window.addEventListener('resize', function () { setTimeout(measure, 160); });
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(measure);
+    window.addEventListener('load', measure);
+    var measured = false;
+    add(function (dt, now) {
+      if (!root.classList.contains('intro-done')) return;
+      if (!measured) { measured = true; measure(); }
+      var y = window.pageYOffset;
+      if (y > vh * 1.4) return;
+      var t = now / 1000, live = pointer.active && finePointer;
+      var px = live ? pointer.x / vw * 2 - 1 : Math.sin(t * 0.4) * 0.55;
+      var py = live ? pointer.y / vh * 2 - 1 : Math.cos(t * 0.31) * 0.35;
+      var sp = clamp(y / (vh * 0.9), 0, 1);
+      rx = damp(rx, -py * 10 + sp * sp * 42, 4.5, dt);
+      ry = damp(ry, px * 17, 4.5, dt);
+      tz = damp(tz, -sp * 320, 6, dt);
+      title.style.transform = 'perspective(1500px) translateZ(' + tz.toFixed(1) + 'px) rotateX(' + rx.toFixed(2) + 'deg) rotateY(' + ry.toFixed(2) + 'deg)';
+
+      // Relief au survol : les lettres proches du curseur sortent de l'écran.
+      var R = Math.max(170, vw * 0.12), shift = y * 0.82;
+      for (var i = 0; i < letters.length; i++) {
+        var L = letters[i], f = 0, dx = 0;
+        if (live && sp < 0.6) {
+          dx = pointer.x - L.cx; var dy = pointer.y - (L.cy - shift), dd = Math.sqrt(dx * dx + dy * dy);
+          f = clamp(1 - dd / R, 0, 1); f = f * f * (3 - 2 * f);
+        }
+        L.z = damp(L.z, f * 90, 9, dt); L.ry = damp(L.ry, -(dx / R) * f * 18, 9, dt);
+        if (!f && Math.abs(L.z) < 0.05 && Math.abs(L.ry) < 0.05) { if (L.dirty) { L.el.style.transform = ''; L.dirty = false; } continue; }
+        L.dirty = true;
+        L.el.style.transform = 'translateZ(' + L.z.toFixed(1) + 'px) rotateY(' + L.ry.toFixed(2) + 'deg)';
+      }
+    });
+  })();
 
   /* Cartes de compétences : inclinaison 3D au survol */
   $$('.bento .card').forEach(function (c) { if (!c.hasAttribute('data-tilt')) c.setAttribute('data-tilt', '7'); });
