@@ -184,8 +184,16 @@
     var el = h === '#top' ? null : $(h);
     if (h !== '#top' && !el) return;
     e.preventDefault();
-    scrollToY(el ? targetY(el) : 0);
+    var ty = el ? targetY(el) : 0;
+    // Grand saut : transition plein écran « warp » (WebGL), le saut se fait pendant qu'elle couvre l'écran.
+    if (window.Warp && !reduce && Math.abs(ty - window.pageYOffset) > window.innerHeight * 1.2) {
+      var label = (a.getAttribute('data-warp') || a.textContent || '').replace(/^\s*\d+\s*/, '').trim();
+      window.Warp.go(function () { scrollToY(ty, true); }, { x: e.clientX, y: e.clientY, label: label });
+    } else scrollToY(ty);
   });
+
+  /* Cartes de compétences : inclinaison 3D au survol */
+  $$('.bento .card').forEach(function (c) { if (!c.hasAttribute('data-tilt')) c.setAttribute('data-tilt', '7'); });
 
   /* ------------------------------------------------------------------
      Écran de chargement, puis intro

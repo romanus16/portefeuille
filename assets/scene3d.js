@@ -99,10 +99,14 @@ function init() {
       return 42.*dot(m*m,vec4(dot(p0,x0),dot(p1,x1),dot(p2,x2),dot(p3,x3)));
     }
     uniform float uTime; uniform float uAmp; uniform float uFreq; uniform float uHover; uniform vec3 uPoint;
+    uniform float uShockT; uniform float uShockAmp; uniform vec3 uShockDir;
     float dispAt(vec3 p){
       float n = snoise(p * uFreq + vec3(0., uTime * .17, uTime * .06)) * .62 + snoise(p * uFreq * 2.3 - vec3(uTime * .2, 0., 0.)) * .2;
       float bulge = uHover * pow(max(dot(p, uPoint), 0.), 5.) * .5;
-      return n * uAmp + bulge;
+      // onde de choc : un anneau qui part du point cliqué et fait le tour de la sphère
+      float sd = acos(clamp(dot(p, uShockDir), -1., 1.));
+      float ring = exp(-pow((sd - uShockT * 2.4) * 3.4, 2.)) * uShockAmp * exp(-uShockT * 1.5);
+      return n * uAmp + bulge + ring * .3;
     }
     vec3 dpos(vec3 p){ return p * (1. + dispAt(p)); }
   `;
@@ -113,7 +117,7 @@ function init() {
     clearcoat: 0.35, clearcoatRoughness: 0.06,
   });
   const U = {
-    uTime: { value: 0 }, uAmp: { value: 0.07 }, uFreq: { value: 1.05 }, uHover: { value: 0 }, uPoint: { value: new THREE.Vector3(0, 0, 1) },
+    uTime: { value: 0 }, uAmp: { value: 0.07 }, uFreq: { value: 1.05 }, uHover: { value: 0 }, uPoint: { value: new THREE.Vector3(0, 0, 1) }, uShockT: { value: 99 }, uShockAmp: { value: 0 }, uShockDir: { value: new THREE.Vector3(0, 0, 1) },
     uRim: { value: 0.42 }, uRimColor: { value: new THREE.Color(0xff7a45) },
   };
   coreMat.onBeforeCompile = (shader) => {
@@ -314,6 +318,16 @@ function init() {
   const st = { x: 0, ny: 0, size: 0, op: 0, amp: 0 }, cur = { x: 0, ny: 0, size: 0, op: 0, amp: 0 };
   let seeded = false, prevY = window.pageYOffset, vel = 0, hover = 0, offX = 0, offY = 0, camX = 0, camY = 0;
   let introT0 = 0, introP = 0, lastTs = 0, ema = 0.016, slow = 0, running = false, drawnEmpty = false;
+  let punch = 0, spinBoost = 0, spinAcc = 0, warpBoost = 0, warpTarget = 0;
+  // clic sur la scène (hors liens et boutons) : onde de choc dans la matière + impulsion de rotation
+  window.addEventListener('pointerdown', (e) => {
+    if (noMotion || cur.op < 0.3 || (e.target.closest && e.target.closest('a, button, input, summary, .case, .c3d-card, .cv-stage'))) return;
+    const pxd = (e.clientX / window.innerWidth) * 2 - 1, pyd = -((e.clientY / window.innerHeight) * 2 - 1);
+    const sx = pxd * halfW - rig.position.x, sy = pyd * halfH - rig.position.y, sc = Math.max(rig.scale.x, 0.001);
+    if (Math.hypot(sx, sy) / sc > 3.2) return; // trop loin du noyau
+    U.uShockDir.value.set(sx, sy, sc * 0.9).normalize().applyQuaternion(qInv.copy(core.quaternion).invert());
+    U.uShockT.value = 0; U.uShockAmp.value = 1; punch = 1; spinBoost = 2.6 * Math.sign(sx || 1);
+  });
   const qInv = new THREE.Quaternion(), dir = new THREE.Vector3(), tmpV = new THREE.Vector3(), tmpV2 = new THREE.Vector3();
   const timer = new THREE.Timer(); timer.connect(document);
   let noMotion = reduceMQ.matches;
@@ -403,6 +417,13 @@ function init() {
     offX = damp(offX, px, 3.2, dt); offY = damp(offY, py, 3.2, dt);
     camX = damp(camX, px * 0.22, 2.4, dt); camY = damp(camY, py * 0.14, 2.4, dt);
     camera.position.set(camX, camY, CAM); camera.lookAt(0, 0, 0);
+    // vitesse : le champ de vision s'ouvre quand on défile vite (et pendant une transition warp)
+    warpBoost = damp(warpBoost, warpTarget, warpTarget ? 3 : 2, dt);
+    const fovT = FOV + (noMotion ? 0 : clamp(Math.abs(vel) / 170, 0, 10) + warpBoost * 34);
+    if (Math.abs(camera.fov - fovT) > 0.01) { camera.fov = damp(camera.fov, fovT, 5, dt); camera.updateProjectionMatrix(); }
+    punch = damp(punch, 0, 3.2, dt); spinBoost = damp(spinBoost, 0, 1.4, dt); spinAcc += spinBoost * dt;
+    U.uShockT.value += dt; U.uShockAmp.value = damp(U.uShockAmp.value, 0, 0.6, dt);
+    rig.scale.multiplyScalar(1 + punch * 0.14);
 
     const pw = px * halfW - rig.position.x, ph = py * halfH - rig.position.y;
     const dd = Math.hypot(pw, ph) / Math.max(scale, 0.001);
@@ -410,7 +431,7 @@ function init() {
     hover = damp(hover, hTarget * (cur.op > 0.3 ? 1 : 0), 4.5, dt);
 
     const spin = noMotion ? 0.55 : t * 0.1;
-    core.rotation.set(noMotion ? 0.3 : t * 0.045 - offY * 0.35, spin + offX * 0.5 + iSpin, 0);
+    core.rotation.set(noMotion ? 0.3 : t * 0.045 - offY * 0.35, spin + offX * 0.5 + iSpin + spinAcc, 0);
     cage.rotation.set(-core.rotation.x * 0.7 + 0.2, -spin * 0.8 + iSpin * 0.5, 0.1);
     ringA.rotation.z = noMotion ? 0.4 : t * 0.14; ringB.rotation.z = noMotion ? 1 : -t * 0.1;
     for (let i = 0; i < NODES; i++) {
@@ -433,6 +454,7 @@ function init() {
     dustMat.uniforms.uTime.value = t; dustMat.uniforms.uOpacity.value = (0.25 + 0.75 * clamp(op * 1.2, 0, 1)) * (light ? 0.7 : 1);
     dust.rotation.y = noMotion ? 0 : t * 0.012 + offX * 0.06; dust.rotation.x = offY * 0.03;
     dust.position.y = (y * 0.0006) % 40;
+    dust.scale.set(1 + punch * 0.35, 1 + punch * 0.35, 1 + clamp(Math.abs(vel) / 700, 0, 2.5) + warpBoost * 4 + punch * 0.8);
   }
 
   const occluded = () => {
@@ -484,6 +506,79 @@ function init() {
 
   document.addEventListener('visibilitychange', () => { if (document.hidden) { renderer.setAnimationLoop(null); } else if (running) { renderer.setAnimationLoop(frame); } });
   canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); stop(); fail('contexte WebGL perdu'); });
+
+  /* ---------- Transition « warp » plein écran (second canvas, au-dessus du contenu) ---------- */
+  (function setupWarp() {
+    const wc = document.createElement('canvas'); wc.id = 'warp'; wc.setAttribute('aria-hidden', 'true'); document.body.appendChild(wc);
+    const lab = document.createElement('div'); lab.className = 'warp-label'; lab.setAttribute('aria-hidden', 'true'); lab.innerHTML = '<span></span>'; document.body.appendChild(lab);
+    let wr; try { wr = new THREE.WebGLRenderer({ canvas: wc, alpha: true, antialias: false, powerPreference: 'default' }); } catch (e) { return; }
+    wr.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25));
+    const wcam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    const wu = { uP: { value: 0 }, uT: { value: 0 }, uRes: { value: new THREE.Vector2(1, 1) }, uO: { value: new THREE.Vector2(0.5, 0.5) }, uA: { value: new THREE.Color(0xff6b35) }, uB: { value: new THREE.Color(0xffd9a8) }, uBg: { value: new THREE.Color(0x0a0908) } };
+    const wm = new THREE.ShaderMaterial({
+      uniforms: wu, transparent: true, depthTest: false, depthWrite: false,
+      vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }',
+      fragmentShader: /* glsl */ `
+        uniform float uP; uniform float uT; uniform vec2 uRes; uniform vec2 uO; uniform vec3 uA; uniform vec3 uB; uniform vec3 uBg;
+        varying vec2 vUv;
+        float h(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+        float nz(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f);
+          return mix(mix(h(i), h(i + vec2(1., 0.)), f.x), mix(h(i + vec2(0., 1.)), h(i + vec2(1., 1.)), f.x), f.y); }
+        float fbm(vec2 p){ float v = 0., a = .5; for (int i = 0; i < 4; i++) { v += a * nz(p); p *= 2.03; a *= .5; } return v; }
+        void main(){
+          float asp = uRes.x / uRes.y;
+          vec2 p = (vUv - uO) * vec2(asp, 1.);
+          float d = length(p), ang = atan(p.y, p.x);
+          float n = (fbm(vUv * vec2(asp, 1.) * 3. + uT * .4) - .5) * .45 + (fbm(vec2(ang * 3., d * 3. - uT * 1.5)) - .5) * .25;
+          float maxR = length(vec2(asp, 1.)) + .6;
+          float edge, m;
+          if (uP < 1.) { edge = d + n - uP * maxR; m = 1. - smoothstep(-.015, .015, edge); }       // l'encre se répand depuis le clic
+          else { edge = d + n - (uP - 1.) * maxR; m = smoothstep(-.015, .015, edge); }             // un trou de feu s'ouvre sur la nouvelle section
+          float live = step(.001, uP) * (1. - step(1.999, uP));
+          float g = exp(-abs(edge) * 22.) * live, g2 = exp(-abs(edge) * 6.) * live;
+          float streak = pow(abs(sin(ang * 36. + n * 8.)), 24.) * smoothstep(0., .9, d) * m;
+          vec3 col = uBg + uA * streak * .14;
+          col = mix(col, uA, clamp(g2 * .55, 0., 1.)); col = mix(col, uB, clamp(g, 0., 1.));
+          gl_FragColor = vec4(col, clamp(m + g2 * .8, 0., 1.));
+          #include <colorspace_fragment>
+        }`,
+    });
+    const ws = new THREE.Scene(); ws.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), wm));
+    let busy = false;
+    const ease = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+    window.Warp = {
+      // Aperçu figé d'une étape de la transition (0..1 recouvrement, 1..2 révélation) — utile pour les tests ; peek(null) masque.
+      peek(p, o) {
+        o = o || {}; const W = window.innerWidth, H = window.innerHeight;
+        if (p == null) { wc.classList.remove('on'); lab.classList.remove('on'); return; }
+        wr.setSize(W, H, false); wu.uRes.value.set(W, H); wu.uO.value.set((o.x != null ? o.x : W / 2) / W, 1 - (o.y != null ? o.y : H / 2) / H);
+        lab.firstChild.textContent = o.label || ''; lab.classList.toggle('on', !!o.label);
+        wc.classList.add('on'); wu.uP.value = p; wu.uT.value = 3; wr.render(ws, wcam);
+      },
+      go(cb, o) {
+        if (busy) { cb(); return; }
+        busy = true; o = o || {};
+        const W = window.innerWidth, H = window.innerHeight, light = isLight();
+        wr.setSize(W, H, false); wu.uRes.value.set(W, H);
+        wu.uBg.value.set(light ? 0xfaf6f1 : 0x0a0908); wu.uA.value.set(light ? 0xe5521c : 0xff6b35); wu.uB.value.set(light ? 0xf59a1f : 0xffd9a8);
+        wu.uO.value.set((o.x != null ? o.x : W / 2) / W, 1 - (o.y != null ? o.y : H / 2) / H);
+        lab.firstChild.textContent = o.label || ''; lab.firstChild.style.color = light ? '#19120c' : '#f6f1eb';
+        wc.classList.add('on'); warpTarget = 1;
+        const t0 = performance.now(), D1 = 720, HOLD = 420, D2 = 1000;
+        let swapped = false;
+        const step = (now) => {
+          const e = now - t0; let p;
+          if (e < D1) { p = ease(e / D1); if (e > D1 * 0.55) lab.classList.add('on'); }
+          else if (e < D1 + HOLD) { p = 1; if (!swapped) { swapped = true; cb(); } }
+          else if (e < D1 + HOLD + D2) { lab.classList.add('out'); warpTarget = 0; p = 1 + ease((e - D1 - HOLD) / D2); }
+          else { wc.classList.remove('on'); lab.classList.remove('on', 'out'); busy = false; return; }
+          wu.uP.value = p; wu.uT.value = now / 1000; wr.render(ws, wcam);
+          requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      },
+    };
+  })();
 
   /* ---------- Démarrage : on compile les shaders avant la première image ---------- */
   measure();

@@ -240,13 +240,14 @@
       + '</div></article>';
   }
 
-  function rowHTML(p) {
+  function rowHTML(p, i) {
+    var rv = ' data-reveal="flip" style="--d:' + ((i || 0) * 0.07).toFixed(2) + 's"';
     var stack = p.stack.slice(0, 3).join(' · ');
     var inner = '<span class="r-no">' + p.no + '</span><span class="r-title">' + esc(p.title) + '</span><span class="r-type">' + esc(p.kind) + '</span>'
       + '<span class="r-stack">' + esc(stack) + '</span><span class="r-year">' + esc(p.year) + '</span>'
       + (p.soon ? '<span class="r-go r-soon">Bientôt</span>' : '<span class="r-go">' + ico('arrow') + '</span>');
-    if (p.soon) return '<div class="row is-soon" aria-label="' + esc(p.title) + ' : bientôt">' + inner + '</div>';
-    return '<a class="row" href="#projet/' + p.id + '" data-open="' + p.id + '" data-cursor="Ouvrir"' + (p.preview ? ' data-preview="' + p.preview + '"' : '') + '>' + inner + '</a>';
+    if (p.soon) return '<div class="row is-soon"' + rv + ' aria-label="' + esc(p.title) + ' : bientôt">' + inner + '</div>';
+    return '<a class="row"' + rv + ' href="#projet/' + p.id + '" data-open="' + p.id + '" data-cursor="Ouvrir"' + (p.preview ? ' data-preview="' + p.preview + '"' : '') + '>' + inner + '</a>';
   }
 
   var stackEl = document.getElementById('stack');
