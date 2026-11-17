@@ -571,6 +571,33 @@
   /* ------------------------------------------------------------------
      Divers + API publique
      ------------------------------------------------------------------ */
+  /* CV : le document se retourne pour passer du français à l'anglais (le PDF, le lien et la version texte suivent) */
+  (function () {
+    var card = $('#cvCard'); if (!card) return;
+    var tabs = $$('.cv-lang [data-lang]'), dl = $('#cvDl'), open = $('#cvOpen'), lab = $('#cvDlLabel'), bodies = $$('.cv-text-body');
+    var FILES = { fr: 'assets/cv/CV-AHONYI-Romaric-FR.pdf', en: 'assets/cv/CV-AHONYI-Romaric-EN.pdf' };
+    var LABELS = { fr: 'Télécharger le PDF', en: 'Télécharger la version anglaise' };
+    var ARIA = { fr: 'Ouvrir le CV français en PDF', en: 'Ouvrir le CV en anglais en PDF' };
+    function setLang(lang) {
+      card.classList.toggle('is-en', lang === 'en');
+      tabs.forEach(function (b) { var on = b.getAttribute('data-lang') === lang; b.classList.toggle('is-on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
+      card.setAttribute('href', FILES[lang]); card.setAttribute('aria-label', ARIA[lang]);
+      dl.setAttribute('href', FILES[lang]); dl.setAttribute('download', FILES[lang].split('/').pop());
+      open.setAttribute('href', FILES[lang]); lab.textContent = LABELS[lang];
+      bodies.forEach(function (b) { b.hidden = b.getAttribute('data-lang') !== lang; });
+    }
+    // La face anglaise est en chargement différé : on la précharge dès qu'on s'approche de l'onglet.
+    var backImg = card.querySelector('.cv-back img');
+    function preload() { if (backImg && backImg.loading === 'lazy') backImg.loading = 'eager'; }
+    tabs.forEach(function (b, i) {
+      b.addEventListener('pointerenter', preload); b.addEventListener('focus', preload); card.addEventListener('pointerenter', preload, { once: true });
+      b.addEventListener('click', function () { preload(); setLang(b.getAttribute('data-lang')); });
+      b.addEventListener('keydown', function (e) {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { var n = tabs[(i + 1) % tabs.length]; n.focus(); setLang(n.getAttribute('data-lang')); }
+      });
+    });
+  })();
+
   var year = $('#year'); if (year) year.textContent = new Date().getFullYear();
   register(document);
   measureAll();

@@ -76,6 +76,7 @@
       <a href="#apropos" data-link>À propos</a>
       <a href="#competences" data-link>Compétences</a>
       <a href="#projets" data-link>Projets</a>
+      <a href="#cv" data-link>CV</a>
       <a href="#contact" data-link>Contact</a>
     </nav>
 
@@ -96,7 +97,8 @@
     <a class="m-link" style="--i:1" href="#apropos"><small>01</small>À propos</a>
     <a class="m-link" style="--i:2" href="#competences"><small>02</small>Compétences</a>
     <a class="m-link" style="--i:3" href="#projets"><small>03</small>Projets</a>
-    <a class="m-link" style="--i:4" href="#contact"><small>04</small>Contact</a>
+    <a class="m-link" style="--i:4" href="#cv"><small>04</small>CV</a>
+    <a class="m-link" style="--i:5" href="#contact"><small>05</small>Contact</a>
     <div class="socials m-foot">
       <a href="https://github.com/romanus16" target="_blank" rel="noopener" aria-label="GitHub"><svg class="ic"><use href="#i-github"/></svg></a>
       <a href="https://www.linkedin.com/in/romaric-ahonyi-682127356" target="_blank" rel="noopener" aria-label="LinkedIn"><svg class="ic"><use href="#i-linkedin"/></svg></a>
@@ -207,7 +209,7 @@
             <h3>Programmation</h3>
             <p>Des bases solides dans plusieurs langages pour construire des applications fiables et maintenables.</p>
             <div class="chips">
-              <span class="chip"><i></i>Python</span><span class="chip"><i></i>Java</span><span class="chip"><i></i>JavaScript</span><span class="chip"><i></i>TypeScript</span><span class="chip"><i></i>Dart</span><span class="chip"><i></i>HTML</span><span class="chip"><i></i>CSS</span>
+              <span class="chip"><i></i>Python</span><span class="chip"><i></i>Java</span><span class="chip"><i></i>JavaScript</span><span class="chip"><i></i>TypeScript</span><span class="chip"><i></i>Dart</span><span class="chip"><i></i>HTML</span><span class="chip"><i></i>CSS</span><span class="chip"><i></i>PHP</span>
             </div>
           </article>
 
@@ -237,7 +239,7 @@
             <h3>Web, mobile &amp; back-end</h3>
             <p>Des applications complètes : interfaces modernes, API et bases de données, sur le web comme sur mobile.</p>
             <div class="chips">
-              <span class="chip"><i></i>Flutter</span><span class="chip"><i></i>React</span><span class="chip"><i></i>Django</span><span class="chip"><i></i>Firebase</span><span class="chip"><i></i>Bases de données</span><span class="chip"><i></i>Git</span>
+              <span class="chip"><i></i>Flutter</span><span class="chip"><i></i>React</span><span class="chip"><i></i>Django</span><span class="chip"><i></i>Laravel</span><span class="chip"><i></i>Flask</span><span class="chip"><i></i>MongoDB</span><span class="chip"><i></i>Firebase</span><span class="chip"><i></i>Bases de données</span><span class="chip"><i></i>Git</span>
             </div>
           </article>
         </div>
@@ -268,11 +270,94 @@
       </div>
     </section>
 
+    <!-- ============ CV ============ -->
+    <section class="section cv" id="cv">
+      <div class="container">
+        <div class="sec-head">
+          <div>
+            <div class="sec-label" data-reveal><b>04</b> CV</div>
+            <h2 class="sec-title" data-split>Mon <em class="serif grad">CV</em></h2>
+          </div>
+          <p data-reveal>Consultez mon CV en ligne, en français ou en anglais : touchez le document pour le retourner, ou téléchargez-le en PDF.</p>
+        </div>
+
+        <div class="cv-layout">
+          <div class="cv-copy" data-reveal>
+            <div class="cv-lang" role="tablist" aria-label="Langue du CV">
+              <button type="button" role="tab" class="is-on" data-lang="fr" aria-selected="true">Français</button>
+              <button type="button" role="tab" data-lang="en" aria-selected="false" lang="en">English</button>
+            </div>
+            <ul class="cv-facts">
+              <li><b>Licence 2</b><span>Informatique, IAI Togo (2025–2026)</span></li>
+              <li><b>Stage de 2 mois</b><span>AGRIDIGITALE : application mobile d'actualités agricoles</span></li>
+              <li><b>4 certifications</b><span>Python Essentials 1 et 2, Linux 1, Introduction to Modern AI</span></li>
+              <li><b>2 langues</b><span>Français (courant), anglais (intermédiaire)</span></li>
+            </ul>
+            <div class="cv-actions">
+              <a class="btn btn-primary" id="cvDl" href="assets/cv/CV-AHONYI-Romaric-FR.pdf" download data-magnetic><span id="cvDlLabel">Télécharger le PDF</span><span class="btn-ic"><svg class="ic"><use href="#i-arrow"/></svg></span></a>
+              <a class="btn btn-ghost" id="cvOpen" href="assets/cv/CV-AHONYI-Romaric-FR.pdf" target="_blank" rel="noopener" data-magnetic>Ouvrir dans un onglet</a>
+            </div>
+          </div>
+
+          <div class="cv-stage" data-reveal="scale">
+            <div class="cv-tilt" data-tilt="10">
+              <a class="cv-card" id="cvCard" href="assets/cv/CV-AHONYI-Romaric-FR.pdf" target="_blank" rel="noopener" data-cursor="Ouvrir" aria-label="Ouvrir le CV en PDF">
+                <span class="cv-face cv-front"><img src="assets/cv/cv-fr.webp" alt="CV d'AHONYI Romaric Koffi Anani, version française : profil, formation, compétences, expériences et certifications" width="1500" height="2125" loading="lazy" decoding="async"></span>
+                <span class="cv-face cv-back"><img src="assets/cv/cv-en.webp" alt="Résumé d'AHONYI Romaric Koffi Anani, version anglaise : profil, formation, compétences, expériences et certifications" lang="en" width="1500" height="2122" loading="lazy" decoding="async"></span>
+              </a>
+            </div>
+            <div class="cv-shadow" aria-hidden="true"></div>
+          </div>
+        </div>
+
+        <details class="cv-text" data-reveal>
+          <summary>Lire le CV en texte</summary>
+          <div class="cv-text-body" lang="fr" data-lang="fr">
+            <h3>Profil</h3>
+            <p>Étudiant en informatique, passionné par la programmation et l'intelligence artificielle. Sérieux et rigoureux, je cherche à approfondir mes compétences en développement logiciel et en technologies innovantes.</p>
+            <h3>Formation</h3>
+            <ul><li>Licence 2 en informatique, IAI Togo (2025–2026), avec un stage de 2 mois dans l'entreprise AGRIDIGITALE</li><li>Licence 1 en informatique, IAI Togo (2024–2025)</li><li>Baccalauréat série D, Lycée Agbonou (2023–2024)</li></ul>
+            <h3>Compétences</h3>
+            <ul><li>Développement web (HTML, CSS, JS et PHP)</li><li>Développement web et mobile (Laravel, Python (Flask), Django, Node.js, Flutter, Dart, Java)</li></ul>
+            <h3>Expériences</h3>
+            <ul>
+              <li><b>Conception et développement d'une application mobile d'actualités pour AGRIDIGITALE (2026)</b> : application mobile et web d'actualités agricoles, scraping RSS, lecteur média et mise en cache hors-ligne, conception de l'API REST et gestion de la base MongoDB.</li>
+              <li><b>Développement d'un système d'inscription et de connexion (2025)</b> : authentification par e-mail et mot de passe, gestion de sessions.</li>
+              <li><b>Conception d'une application de gestion de restaurant (2025)</b> : gestion des stocks, des commandes et des statistiques, persistance des données en base relationnelle.</li>
+              <li><b>Projet personnel</b> : création d'un site d'anniversaire.</li>
+            </ul>
+            <h3>Certifications</h3>
+            <ul><li>Python Essentials 2 : 23 janvier 2026</li><li>Python Essentials 1 : 21 décembre 2025</li><li>Linux 1 : 9 novembre 2025</li><li>Introduction to Modern AI : 9 juillet 2025</li></ul>
+            <h3>Langues</h3>
+            <ul><li>Français (courant)</li><li>Anglais (intermédiaire)</li></ul>
+          </div>
+          <div class="cv-text-body" lang="en" data-lang="en" hidden>
+            <h3>Profile</h3>
+            <p>Computer science student, passionate about programming and artificial intelligence. Serious and rigorous, I am looking to deepen my skills in software development and innovative technologies.</p>
+            <h3>Education</h3>
+            <ul><li>Bachelor's Year 2 in Computer Science, IAI Togo (2025–2026), including a 2-month internship at AGRIDIGITALE</li><li>Bachelor's Year 1 in Computer Science, IAI Togo (2024–2025)</li><li>High school diploma (Baccalauréat, Series D), Lycée Agbonou (2023–2024)</li></ul>
+            <h3>Skills</h3>
+            <ul><li>Web development (HTML, CSS, JS and PHP)</li><li>Web and mobile development (Laravel, Python (Flask), Django, Node.js, Flutter, Dart, Java)</li></ul>
+            <h3>Professional experience</h3>
+            <ul>
+              <li><b>Design and development of a news mobile app for AGRIDIGITALE (2026)</b>: agricultural news mobile and web application, RSS scraping, media player integration and offline caching, REST API design and MongoDB database management.</li>
+              <li><b>Development of a sign-up and login system (2025)</b>: email and password authentication, session management.</li>
+              <li><b>Design of a restaurant management application (2025)</b>: stock, order and statistics management, data persistence in a relational database.</li>
+              <li><b>Personal project</b>: creation of a birthday website.</li>
+            </ul>
+            <h3>Certifications</h3>
+            <ul><li>Python Essentials 2: January 23, 2026</li><li>Python Essentials 1: December 21, 2025</li><li>Linux 1: November 9, 2025</li><li>Introduction to Modern AI: July 9, 2025</li></ul>
+            <h3>Languages</h3>
+            <ul><li>French (fluent)</li><li>English (intermediate)</li></ul>
+          </div>
+        </details>
+      </div>
+    </section>
     <!-- ============ CONTACT ============ -->
     <section class="section contact" id="contact">
       <div class="aurora" aria-hidden="true"><span class="blob b1"></span><span class="blob b2"></span></div>
       <div class="container">
-        <div class="sec-label" data-reveal><b>04</b> Contact</div>
+        <div class="sec-label" data-reveal><b>05</b> Contact</div>
         <h2 class="contact-title" data-split>Un projet en tête&nbsp;? <em class="serif grad">Parlons-en.</em></h2>
         <p class="lead" data-reveal>Intéressé par une collaboration ou envie d'en savoir plus sur mon travail ? Le plus simple est de m'écrire sur LinkedIn.</p>
         <div class="cta-row" data-reveal style="--d:.1s">
@@ -289,7 +374,7 @@
       <div class="footer-top">
         <p class="footer-pitch">Une idée, un projet, une question&nbsp;? <em class="serif grad">Écrivez-moi.</em></p>
         <div class="footer-cols">
-          <div class="footer-col"><h4>Navigation</h4><a href="#apropos">À propos</a><a href="#competences">Compétences</a><a href="#projets">Projets</a><a href="#contact">Contact</a></div>
+          <div class="footer-col"><h4>Navigation</h4><a href="#apropos">À propos</a><a href="#competences">Compétences</a><a href="#projets">Projets</a><a href="#cv">CV</a><a href="#contact">Contact</a></div>
           <div class="footer-col"><h4>Réseaux</h4><a href="https://github.com/romanus16" target="_blank" rel="noopener">GitHub</a><a href="https://www.linkedin.com/in/romaric-ahonyi-682127356" target="_blank" rel="noopener">LinkedIn</a></div>
         </div>
       </div>

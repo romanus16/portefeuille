@@ -217,10 +217,10 @@ function init() {
   /* ---------- Sphère de compétences : des étiquettes réparties sur une sphère (Fibonacci), autour du noyau ---------- */
   const ORB_R = 1.5, SKH = 0.17;
   const SKILLS = [
-    ['Python', 0], ['Java', 0], ['JavaScript', 0], ['TypeScript', 0], ['Dart', 0], ['HTML', 0], ['CSS', 0],
+    ['Python', 0], ['Java', 0], ['JavaScript', 0], ['TypeScript', 0], ['Dart', 0], ['PHP', 0], ['HTML', 0], ['CSS', 0],
     ['Machine Learning', 1], ['NLP', 1], ['Vision', 1], ['Réseaux de neurones', 1],
     ['Photoshop', 2], ['Canva', 2],
-    ['Flutter', 3], ['React', 3], ['Django', 3], ['Firebase', 3], ['Git', 3], ['MySQL', 3], ['PostgreSQL', 3], ['Supabase', 3], ['Tailwind CSS', 3], ['Three.js', 3], ['WebGL', 3], ['JWT', 3], ['Node.js', 3],
+    ['Flutter', 3], ['React', 3], ['Django', 3], ['Laravel', 3], ['Flask', 3], ['MongoDB', 3], ['Firebase', 3], ['Git', 3], ['MySQL', 3], ['PostgreSQL', 3], ['Supabase', 3], ['Tailwind CSS', 3], ['Three.js', 3], ['WebGL', 3], ['JWT', 3], ['Node.js', 3],
   ];
   const SK_COL = { dark: ['#ff8a50', '#ffc266', '#f5efe8', '#d9b99b'], light: ['#c2410c', '#b45309', '#1c1917', '#78350f'] };
   const orb = new THREE.Group(); orb.visible = false; scene.add(orb);
@@ -278,8 +278,8 @@ function init() {
       work: [0, 0.04, 1.02, 0.42, 0.07], workOut: [0, 0.04, 0.8, 0, 0.06], contact: [0, 0.04, 0.72, 0.26, 0.1],
     };
     const k = (y, p) => ({ y, x: p[0], ny: p[1], size: p[2], op: p[3], amp: p[4] });
-    const ys = [0, A.about + vh * 0.2, A.skills + vh * 0.25, Math.max(A.c3d - vh * 0.15, A.skills + vh * 0.8), Math.max(A.c3dEnd - vh * 1.3, A.c3d), Math.max(A.c3dEnd - vh * 0.35, A.c3d + 10), Math.max(A.contact - vh * 0.1, A.c3dEnd)];
-    const poses = [P.hero, P.about, P.skills, P.work, P.work, P.workOut, P.contact];
+    const ys = [0, A.about + vh * 0.2, A.skills + vh * 0.25, Math.max(A.c3d - vh * 0.15, A.skills + vh * 0.8), Math.max(A.c3dEnd - vh * 1.3, A.c3d), Math.max(A.c3dEnd - vh * 0.35, A.c3d + 10), Math.max(A.contact - vh * 0.9, A.c3dEnd), Math.max(A.contact - vh * 0.1, A.c3dEnd + 10)];
+    const poses = [P.hero, P.about, P.skills, P.work, P.work, P.workOut, P.workOut, P.contact]; // l'objet reste caché pendant l'index et le CV
     keys.length = 0; let last = -1;
     ys.forEach((y, i) => { last = Math.max(y, last + 12); keys.push(k(last, poses[i])); });    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, dprCap) * (quality ? 0.75 : 1));
     renderer.setSize(vw, vh, false);
